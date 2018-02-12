@@ -22,10 +22,14 @@ tokens :-
   float                             { \s -> TokenCfloat}
   double                            { \s -> TokenCdouble}
   void                              { \s -> TokenCvoid}
+  \.\.\.                            { \s -> TokenCellipsis}
   \,                                { \s -> TokenCcomma}
+  \;                                { \s -> TokenCsemicolon}
   [\*]                              { \s -> TokenCasterisk}
   \(                                { \s -> TokenCLParen}
   \)                                { \s -> TokenCRParen}
+  \[                                { \s -> TokenCLBracket}
+  \]                                { \s -> TokenCRBracket}
   [$alpha \_]([$alpha $digit \_]*)   { \s -> TokenCSym s}
 
 
@@ -50,6 +54,10 @@ data Token = TokenCextern
            | TokenCLParen
            | TokenCRParen
            | TokenCSym String
+           | TokenCellipsis
+           | TokenCsemicolon
+           | TokenCLBracket
+           | TokenCRBracket
            deriving (Eq,Show)
 
 scanTokens = alexScanTokens
