@@ -29,22 +29,21 @@ import Tokens
 		'['       { TokenCLBracket}
 		']'       { TokenCRBracket}
     IDENT     { TokenCSym $$}
-
 %%
 
 external_declaration
-	: extern declaration_specifiers declarator ';'       		 {}
+	: extern declaration_specifiers declarator ';'       		 { mkexpressiontop $2 $3}
 
 declaration_specifiers
-	: storage_class_specifier                          {SS $1 : []}
+	: storage_class_specifier                          {[SS $1]}
 	| storage_class_specifier declaration_specifiers   {[SS $1] ++ $2}
-	| type_specifier                                   {TS $1 : []}
+	| type_specifier                                   {[TS $1]}
 	| type_specifier declaration_specifiers            {[TS $1] ++ $2}
-	| type_qualifier                                   {TQ $1 : []}
+	| type_qualifier                                   {[TQ $1]}
 	| type_qualifier declaration_specifiers            {[TQ $1] ++ $2}
 
 storage_class_specifier
-	: extern              {Extern}
+	: extern               {Extern}
 
 type_specifier
 	: void                 {Void}
@@ -62,28 +61,28 @@ type_qualifier
 	| volatile             {Volatile}
 
 declarator
-	: pointer direct_declarator        {$1 $2}
-	| direct_declarator                {$1}
+	: pointer direct_declarator        {Rhalf $1 ($2)}
+	| direct_declarator                {Rhalf Nothing ($2)}
 
 direct_declarator
-	: IDENT			                                       {Name $1}
-	| '(' declarator ')'                               {Parens $2}
-	| direct_declarator '[' ']'                        {$1 Array}
+	: IDENT			                                       {Inpar Just Name $1 Nothing Nothing}
+	| '(' declarator ')'                               {Inpar Just Type (mkexpressiontop Nothing $2) Nothing}
+	| direct_declarator '[' ']'                        {Inpar Just $1 Just Array Nothing}
 	| direct_declarator '(' parameter_type_list ')'    {$1 Params $3}
 	| direct_declarator '(' ')'                        {$1 Params []}
 
 pointer
-	: '*'                                              {Pointer }
-	| '*' type_qualifier                               {Pointer $2}
-	| '*' pointer                                      {Pointer $2}
-	| '*' type_qualifier pointer                       {Pointer $2 $3}
+	: '*'                                              {Just (Pointer Nothing Nothing)}
+	| '*' type_qualifier                               {Just (Pointer $2 Nothing)}
+	| '*' pointer                                      {Just (Pointer Nothing $2)}
+	| '*' type_qualifier pointer                       {Just (Pointer $2 $3)}
 
 parameter_type_list
 	: parameter_list                                   {$1}
 	| parameter_list ',' ellipsis                      {$1 ++ [Ellipsis]}
 
 parameter_list
-	: parameter_declaration                            {$1 : []}
+	: parameter_declaration                     			 {[$1]}
 	| parameter_list ',' parameter_declaration         {$1 ++ [$3]}
 
 parameter_declaration
@@ -109,9 +108,26 @@ direct_abstract_declarator
 parseError :: [Token] -> a
 parseError _ = error "Parse error"
 
-data Name = Name String
-data Label  = Label Name TypeOrder
-data TypeOrder = HighOrder [TypeOrder] TypeOrder | LowOrder [UnifiedTypeDescriptors]
+data Rhalfconvenience = Rhalf MPointer Inpar
+data Inpar = Inpar Inner Params
+
+data Ellipsis = Ellipsis
+data Param = Either Expression Ellipsis
+type Params = Maybe [Expression]
+type Result = Maybe ConciseTypeInfo
+data Pointer = Pointer Maybe TypeQualifier MPointer
+type MPointer = Maybe Pointer
+data InnerOpts = Type Expression | Name String Inner
+data Array = Array
+type Inner = Maybe InnerOpts Maybe Array
+
+
+data Expression = Expr Result MPointer Inner Params
+
+
+
+type ConciseTypeInfo = [UnifiedTypeDescriptors]
+
 data UnifiedTypeDescriptors = TS TypeSpecifier
 														| SS StorageSpecifier
 														| TQ TypeQualifier
